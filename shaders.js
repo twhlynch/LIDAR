@@ -1,23 +1,17 @@
 export const particleVS = /* glsl */`
 	attribute vec3 color;
-
 	varying vec3 vColor;
-	varying vec3 vWorldPosition;
 
 	void main() 
 	{
 		vColor = color;
 
-		vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-		vWorldPosition = worldPosition.xyz;
-
-		vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-		gl_PointSize = 0.05 * (300.0 / length(mvPosition.xyz));
-		gl_Position = projectionMatrix * mvPosition;
-	}`
+		gl_PointSize = 1.0;
+		gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+	}
+`
 export const particleFS = /* glsl */`
 	varying vec3 vColor;
-	varying vec3 vWorldPosition;
 
 	void main()
 	{
