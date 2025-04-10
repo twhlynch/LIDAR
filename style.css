@@ -9,3 +9,23 @@ canvas {
 body {
 	background-color: #000;
 }
+button {
+	width: 50px;
+	height: 50px;
+	border-radius: 50%;
+	background-color: #fff5;
+	border: 2px solid #fff9;
+	box-shadow: 0 0 3px 3px #000;
+	text-shadow: 0 0 1px 1px #000;
+	color: #fff;
+	font-weight: bold;
+	font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	position: fixed;
+}
+#scanner {
+	bottom: 10px;
+	left: 10px;
+}

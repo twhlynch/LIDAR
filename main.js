@@ -109,6 +109,12 @@ async function init() {
 		scene.add(object);
 		objects.push(object);
 	}
+
+	// setup UI
+	const scannerButton = document.getElementById('scanner');
+	scannerButton.addEventListener('click', () => {
+		scanning = !scanning;
+	});
 }
 
 // #region events
