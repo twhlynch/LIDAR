@@ -1,11 +1,11 @@
 import * as THREE from 'three';
 import * as SHADERS from './shaders.js';
 import { FreeControls } from './free_controls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-let clock, camera, scene, renderer, controls, loader, raycaster;
+let clock, camera, scene, renderer, controls, raycaster;
 
 const MAX_POINTS = 1_000_000;
+const MAZE_SIZE = 21;
 
 let objects = [];
 let mainMaterial;
@@ -34,7 +34,7 @@ async function init() {
 	camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 5000);
 	controls = new FreeControls(camera, renderer.domElement);
 	raycaster = new THREE.Raycaster();
-	camera.position.set(0, 0, 37);
+	camera.position.set(2, 2, -2);
 
 	scene.add(new THREE.AmbientLight(0x404040));
 	scene.add(new THREE.DirectionalLight(0xffffff, 0.5));
@@ -74,41 +74,15 @@ async function init() {
 		color: 0x00ff00,
 		wireframe: true,
 		transparent: true,
-		opacity: 0
+		opacity: 1
 	});
 
-	loader = new GLTFLoader();
-
-	// const map = await loadModel('map.glb');
-	// scene.add(map);
-	// objects.push(map);
-
-	const planeGeometry = new THREE.PlaneGeometry(1000, 1000);
-	const plane = new THREE.Mesh(planeGeometry, mainMaterial);
-	plane.position.set(0, -100, 0);
-	plane.rotation.x = -Math.PI / 2
-	scene.add(plane);
-	objects.push(plane);
-
-	for (let i = 0; i < 10; i++) {
-		const geometry = new THREE.TorusKnotGeometry( 10, 3, 10, 6 );
-		const object = new THREE.Mesh(geometry, mainMaterial);
-
-		object.position.set(
-			Math.random() * 100 - 50,
-			Math.random() * 100 - 50,
-			Math.random() * 100 - 50
-		);
-
-		object.userData.pointColor = new THREE.Color(
-			Math.random(),
-			Math.random(),
-			Math.random()
-		);
-
-		scene.add(object);
-		objects.push(object);
-	}
+	const mazeGeometry = generateMaze();
+	const maze = new THREE.Mesh(mazeGeometry, mainMaterial);
+	maze.rotation.x = -Math.PI / 2;
+	maze.scale.set(5, 5, 5);
+	scene.add(maze);
+	objects.push(maze);
 
 	// setup UI
 	const scannerButton = document.getElementById('scanner');
@@ -239,6 +213,134 @@ function scan() {
 	][pattern]();
 }
 
+// #region maze
+function generateMaze() {
+	const size = 21;
+
+	const maze = Array.from({ length: MAZE_SIZE }, () => Array(MAZE_SIZE).fill(false));
+	maze[MAZE_SIZE - 2][MAZE_SIZE - 1] = true;
+	const visited = Array.from({ length: MAZE_SIZE }, () => Array(MAZE_SIZE).fill(false));
+
+	const directions = [
+		[0, 1],
+		[1, 0],
+		[0, -1],
+		[-1, 0],
+	];
+
+	function isValid(x, y) {
+		return x > 0 && x < MAZE_SIZE - 1 && y > 0 && y < MAZE_SIZE - 1 && !visited[x][y];
+	}
+
+	function getOptions(x, y) {
+		return directions.filter(([dx, dy]) => {
+			const nx = x + dx * 2;
+			const ny = y + dy * 2;
+			const wx = x + dx;
+			const wy = y + dy;
+		
+			return isValid(nx, ny) && isValid(wx, wy);
+		});
+	}
+
+	function dfs(x, y) {
+		visited[x][y] = true;
+		maze[x][y] = true;
+
+		const options = getOptions(x, y).sort(() => Math.random() - 0.5);
+		for (const [dx, dy] of options) {
+			const nx = x + dx * 2;
+			const ny = y + dy * 2;
+			const wx = x + dx;
+			const wy = y + dy;
+		
+			if (!visited[nx][ny]) {
+				maze[wx][wy] = true;
+				dfs(nx, ny);
+			}
+		}
+	}
+
+	dfs(MAZE_SIZE - 2, MAZE_SIZE - 2);
+
+	console.log(maze.map(row => row.map(Number).join('')).join('\n'));
+
+	const geometry = new THREE.BufferGeometry();
+
+	const vertices = [];
+	
+	for (let i = 0; i < MAZE_SIZE; i++) {
+		for (let j = 0; j < MAZE_SIZE; j++) {
+			const cell = maze[i][j];
+			if (cell === false) {
+				for (let [dx, dy] of directions) {
+					const nx = i + dx;
+					const ny = j + dy;
+					if (
+						nx >= 0 && nx < MAZE_SIZE &&
+						ny >= 0 && ny < MAZE_SIZE &&
+						maze[nx][ny] === false
+					) {
+						vertices.push(i);
+						vertices.push(j);
+						vertices.push(0);
+
+						vertices.push(i);
+						vertices.push(j);
+						vertices.push(10);
+
+						vertices.push(nx);
+						vertices.push(ny);
+						vertices.push(0);
+
+						vertices.push(nx);
+						vertices.push(ny);
+						vertices.push(0);
+
+						vertices.push(i);
+						vertices.push(j);
+						vertices.push(10);
+
+						vertices.push(nx);
+						vertices.push(ny);
+						vertices.push(10);
+
+					}
+				}
+			}
+		}
+	}
+
+	// floor
+	vertices.push(0);
+	vertices.push(MAZE_SIZE - 1);
+	vertices.push(0);
+
+	vertices.push(0);
+	vertices.push(0);
+	vertices.push(0);
+
+	vertices.push(MAZE_SIZE - 1);
+	vertices.push(MAZE_SIZE - 1);
+	vertices.push(0);
+
+	vertices.push(MAZE_SIZE - 1);
+	vertices.push(MAZE_SIZE - 1);
+	vertices.push(0);
+
+	vertices.push(0);
+	vertices.push(0);
+	vertices.push(0);
+
+	vertices.push(MAZE_SIZE - 1);
+	vertices.push(0);
+	vertices.push(0);
+
+	geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3))
+
+	return geometry;
+}
+
 // #region functions
 function scanRay(x, y) {
 	raycaster.setFromCamera(new THREE.Vector2(x, y), camera);
@@ -267,18 +369,4 @@ function addPoint(point, color) {
 	pointsObject.geometry.attributes.color.needsUpdate = true;
 
 	nextPointIndex = nextPointIndex === MAX_POINTS - 1 ? 0 : nextPointIndex + 1;
-}
-
-function loadModel(path) {
-	return new Promise((resolve) => {
-		loader.load(path, function (gltf) {
-			let object = gltf.scene.children[0];
-			object.traverse((node) => {
-				if (node instanceof THREE.Mesh) {
-					node.material = mainMaterial;
-				}
-			});
-			resolve(object);
-		});
-	});
 }
