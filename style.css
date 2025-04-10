@@ -5,9 +5,14 @@
 canvas {
 	width: 100svh;
 	height: 100svh;
+	position: fixed;
+	top: 0;
+	left: 0;
 }
-body {
+body, html {
 	background-color: #000;
+	overflow: hidden;
+	overscroll-behavior: none;
 }
 button {
 	width: 50px;
