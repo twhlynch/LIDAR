@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import * as SHADERS from './shaders.js';
-import { FreeControls } from './free_controls.js';
+import { WalkControls } from './walk_controls.js';
 
 let clock, camera, scene, renderer, controls, raycaster;
 
@@ -32,7 +32,7 @@ async function init() {
 	clock = new THREE.Clock();
 	scene = new THREE.Scene();
 	camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 5000);
-	controls = new FreeControls(camera, renderer.domElement);
+	controls = new WalkControls(camera, renderer.domElement, objects);
 	raycaster = new THREE.Raycaster();
 	camera.position.set(2, 2, -2);
 
@@ -74,7 +74,7 @@ async function init() {
 		color: 0x00ff00,
 		wireframe: true,
 		transparent: true,
-		opacity: 1
+		opacity: 0
 	});
 
 	const mazeGeometry = generateMaze();
