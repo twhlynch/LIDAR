@@ -244,7 +244,6 @@ function render() {
 	const direction = difference.normalize();
 	const speed = Math.max(distance * 0.1, 2) * delta;
 	enemy.position.addScaledVector(direction, speed);
-	enemy.rotation.y += 0.1;
 
 	collisionRaycaster.set(new THREE.Vector3(0, 10, 0).add(camera.position), new THREE.Vector3(0, -1, 0));
 	const intersects = collisionRaycaster.intersectObjects(interactionObjects, true);
@@ -262,8 +261,24 @@ function render() {
 // #region scan
 function scan() {
 	[
-		// 0: skip
-		() => {},
+		// 0: maze
+		() => {
+			for (let i = 0; i < MAZE_SIZE; i++) {
+				for (let j = 0; j < MAZE_SIZE; j++) {
+					const x = 0.02 * (i - (MAZE_SIZE / 2 | 0));
+					const y = 0.02 * (j - (MAZE_SIZE / 2 | 0));
+					if (!maze[i][j]) scanRay(x / camera.aspect, y);
+				}	
+			}
+			const X = 0.02 * (camera.position.x / 5 - (MAZE_SIZE / 2 | 0))
+			const Y = 0.02 * (-camera.position.z / 5 - (MAZE_SIZE / 2 | 0))
+			for (let i = 0; i < 5; i++) {
+				scanRay(
+					(X + (Math.random() - 0.5) * 0.01) / camera.aspect,
+					Y + (Math.random() - 0.5) * 0.01
+				);
+			}
+		},
 		// 1: circle
 		() => {
 			const start = Math.random();
