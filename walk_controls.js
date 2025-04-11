@@ -55,46 +55,54 @@ class WalkControls extends THREE.EventDispatcher {
 
 			}
 
+			let active = false;
+
 			switch ( event.code ) {
 
-				case 'KeyW': this.moveState.forward = 1; break;
-				case 'KeyS': this.moveState.back = 1; break;
+				case 'KeyW': this.moveState.forward = 1; active = true; break;
+				case 'KeyS': this.moveState.back = 1; active = true; break;
 
-				case 'KeyA': this.moveState.left = 1; break;
-				case 'KeyD': this.moveState.right = 1; break;
+				case 'KeyA': this.moveState.left = 1; active = true; break;
+				case 'KeyD': this.moveState.right = 1; active = true; break;
 
-				case 'ArrowUp': this.moveState.pitchUp = 1; break;
-				case 'ArrowDown': this.moveState.pitchDown = 1; break;
+				case 'ArrowUp': this.moveState.pitchUp = 1; active = true; break;
+				case 'ArrowDown': this.moveState.pitchDown = 1; active = true; break;
 
-				case 'ArrowLeft': this.moveState.yawLeft = 1; break;
-				case 'ArrowRight': this.moveState.yawRight = 1; break;
+				case 'ArrowLeft': this.moveState.yawLeft = 1; active = true; break;
+				case 'ArrowRight': this.moveState.yawRight = 1; active = true; break;
 
 			}
 
-			this.updateMovementVector();
-			this.updateRotationVector();
+			if (active) {
+				this.updateMovementVector();
+				this.updateRotationVector();
+			}
 
 		};
 
 		this.keyup = function ( event ) {
 
+			let active = false;
+
 			switch ( event.code ) {
 
-				case 'KeyW': this.moveState.forward = 0; break;
-				case 'KeyS': this.moveState.back = 0; break;
+				case 'KeyW': this.moveState.forward = 0; active = true; break;
+				case 'KeyS': this.moveState.back = 0; active = true; break;
 
-				case 'KeyA': this.moveState.left = 0; break;
-				case 'KeyD': this.moveState.right = 0; break;
+				case 'KeyA': this.moveState.left = 0; active = true; break;
+				case 'KeyD': this.moveState.right = 0; active = true; break;
 
-				case 'ArrowUp': this.moveState.pitchUp = 0; break;
-				case 'ArrowDown': this.moveState.pitchDown = 0; break;
+				case 'ArrowUp': this.moveState.pitchUp = 0; active = true; break;
+				case 'ArrowDown': this.moveState.pitchDown = 0; active = true; break;
 
-				case 'ArrowLeft': this.moveState.yawLeft = 0; break;
-				case 'ArrowRight': this.moveState.yawRight = 0; break;
+				case 'ArrowLeft': this.moveState.yawLeft = 0; active = true; break;
+				case 'ArrowRight': this.moveState.yawRight = 0; active = true; break;
 			}
 
-			this.updateMovementVector();
-			this.updateRotationVector();
+			if (active) {
+				this.updateMovementVector();
+				this.updateRotationVector();
+			}
 
 		};
 
@@ -120,6 +128,7 @@ class WalkControls extends THREE.EventDispatcher {
 				this.moveState.pitchDown = event.movementY;
 
 				this.updateRotationVector();
+				this.updateMovementVector();
 			}
 		};
 
@@ -174,6 +183,7 @@ class WalkControls extends THREE.EventDispatcher {
 				this.touchPosition.y = event.targetTouches[0].screenY;
 
 				this.updateRotationVector();
+				this.updateMovementVector();
 			}
 		};
 
@@ -183,35 +193,33 @@ class WalkControls extends THREE.EventDispatcher {
 			const rotMult = scope.rollSpeed;
 
 			// walls
-			scope.raycaster.set(scope.object.position, scope.moveVector);
-			const moveIntersects = scope.raycaster.intersectObjects(scope.objects, true);
+			for (let i = 0; i < 2; i++) { // assume worst case is 2 walls 
+				scope.raycaster.set(scope.object.position, scope.moveVector);
+				const moveIntersects = scope.raycaster.intersectObjects(scope.objects, true);
 
-			if (moveIntersects.length) {
-				const collision = moveIntersects[0];
-				console.log(collision);
-				if (collision.distance < 0.5) {
-					const normalisedMovement = scope.moveVector.clone();
-					normalisedMovement.normalize();
-					scope.object.position.x -= normalisedMovement.x * (0.5 - collision.distance);
-					scope.object.position.y -= normalisedMovement.y * (0.5 - collision.distance);
-					scope.object.position.z -= normalisedMovement.z * (0.5 - collision.distance);
-					scope.moveVector.set(0, 0, 0);
+				if (moveIntersects.length) {
+					const collision = moveIntersects[0];
+					if (collision.distance < 0.5) {
+						const normal = collision.face.normal.clone().applyQuaternion(collision.object.quaternion);
+						scope.moveVector.sub(normal.multiplyScalar(scope.moveVector.dot(normal)))
+					}
 				}
 			}
 
-			scope.moveVector.y += scope.gravity * delta;
-
 			// ground
+			let gravity = scope.gravity * moveMult;
+
 			scope.raycaster.set(scope.object.position, new THREE.Vector3(0, -1, 0));
 			const groundIntersects = scope.raycaster.intersectObjects(scope.objects, true);
 
 			if (groundIntersects.length) {
 				const collision = groundIntersects[0];
-				if (collision.distance < 1) {
-					scope.object.position.y += 1 - collision.distance;
-					scope.moveVector.y = 0;
+				if (collision.distance <= 1 + Math.abs(gravity)) {
+					gravity = 1 - collision.distance;
 				}
 			}
+
+			scope.object.position.y += gravity;
 
 			scope.object.position.x += scope.moveVector.x * moveMult;
 			scope.object.position.y += scope.moveVector.y * moveMult;
@@ -251,8 +259,7 @@ class WalkControls extends THREE.EventDispatcher {
 				- this.moveState.left + this.moveState.right,
 				- this.moveState.down + this.moveState.up,
 				- this.moveState.forward + this.moveState.back,
-			);
-			this.moveVector.applyQuaternion(quaternion);
+			).applyQuaternion(quaternion).normalize();
 		};
 
 		this.updateRotationVector = function () {
