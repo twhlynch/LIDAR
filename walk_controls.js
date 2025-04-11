@@ -21,6 +21,7 @@ class WalkControls extends THREE.EventDispatcher {
 
 		// API
 
+		this.gravity = -0.981
 		this.movementSpeed = 10.0;
 		this.rollSpeed = 0.01;
 		this.isMouseActive = false;
@@ -35,6 +36,8 @@ class WalkControls extends THREE.EventDispatcher {
 
 		const lastQuaternion = new THREE.Quaternion();
 		const lastPosition = new THREE.Vector3();
+
+		this.raycaster = new THREE.Raycaster();
 
 		this.moveState = { left: 0, right: 0, forward: 0, back: 0, up: 0, down: 0, pitchUp: 0, pitchDown: 0, yawLeft: 0, yawRight: 0};
 		this.moveVector = new THREE.Vector3( 0, 0, 0 );
@@ -179,23 +182,40 @@ class WalkControls extends THREE.EventDispatcher {
 			const moveMult = delta * scope.movementSpeed;
 			const rotMult = scope.rollSpeed;
 
-			scope.moveVector.y -= 0.0981;
+			// walls
+			scope.raycaster.set(scope.object.position, scope.moveVector);
+			const moveIntersects = scope.raycaster.intersectObjects(scope.objects, true);
 
-			const raycaster = new THREE.Raycaster();
-			raycaster.set(scope.object.position, new THREE.Vector3(0, -1, 0));
-			let intersects = raycaster.intersectObjects(objects, true);
-			if (intersects.length) {
-				const collision = intersects[0];
-				console.log(collision)
+			if (moveIntersects.length) {
+				const collision = moveIntersects[0];
+				console.log(collision);
+				if (collision.distance < 0.5) {
+					const normalisedMovement = scope.moveVector.clone();
+					normalisedMovement.normalize();
+					scope.object.position.x -= normalisedMovement.x * (0.5 - collision.distance);
+					scope.object.position.y -= normalisedMovement.y * (0.5 - collision.distance);
+					scope.object.position.z -= normalisedMovement.z * (0.5 - collision.distance);
+					scope.moveVector.set(0, 0, 0);
+				}
+			}
+
+			scope.moveVector.y += scope.gravity * delta;
+
+			// ground
+			scope.raycaster.set(scope.object.position, new THREE.Vector3(0, -1, 0));
+			const groundIntersects = scope.raycaster.intersectObjects(scope.objects, true);
+
+			if (groundIntersects.length) {
+				const collision = groundIntersects[0];
 				if (collision.distance < 1) {
 					scope.object.position.y += 1 - collision.distance;
 					scope.moveVector.y = 0;
 				}
 			}
 
-			scope.object.translateX( scope.moveVector.x * moveMult );
-			scope.object.position.y += ( scope.moveVector.y * moveMult );
-			scope.object.translateZ( scope.moveVector.z * moveMult );
+			scope.object.position.x += scope.moveVector.x * moveMult;
+			scope.object.position.y += scope.moveVector.y * moveMult;
+			scope.object.position.z += scope.moveVector.z * moveMult;
 
 			scope.eulerVector.x += scope.rotationVector.x * rotMult;
 			scope.eulerVector.y += scope.rotationVector.y * rotMult;
@@ -223,9 +243,16 @@ class WalkControls extends THREE.EventDispatcher {
 		};
 
 		this.updateMovementVector = function () {
-			this.moveVector.x = ( - this.moveState.left + this.moveState.right );
-			this.moveVector.y = ( - this.moveState.down + this.moveState.up );
-			this.moveVector.z = ( - this.moveState.forward + this.moveState.back );
+			const quaternion = scope.object.quaternion.clone();
+			quaternion.x = 0;
+			quaternion.z = 0;
+
+			this.moveVector.set(
+				- this.moveState.left + this.moveState.right,
+				- this.moveState.down + this.moveState.up,
+				- this.moveState.forward + this.moveState.back,
+			);
+			this.moveVector.applyQuaternion(quaternion);
 		};
 
 		this.updateRotationVector = function () {
