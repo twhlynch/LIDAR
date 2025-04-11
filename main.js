@@ -216,7 +216,11 @@ function render() {
 		joystickPosition.changed = false;
 	}
 
-	enemy.position.lerp(camera.position, 0.1 * delta);
+	const difference = new THREE.Vector3().subVectors(camera.position, enemy.position);
+	const distance = difference.length();
+	const direction = difference.normalize();
+	const speed = Math.max(distance * 0.1, 2) * delta;
+	enemy.position.addScaledVector(direction, speed);
 	enemy.rotation.y += 0.1;
 
 	renderer.render(scene, camera);
