@@ -166,6 +166,7 @@ function render() {
 	if (scanning) scan()
 
 	enemy.position.lerp(camera.position, 0.1 * delta);
+	enemy.rotation.y += 0.1;
 
 	renderer.render(scene, camera);
 }
