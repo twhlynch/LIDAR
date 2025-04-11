@@ -20,6 +20,19 @@ body, html {
 	overscroll-behavior: none;
 }
 
+#mobile {
+	pointer-events: none;
+	display: none;
+}
+#mobile * {
+	pointer-events: all;
+}
+@media (hover: none) {
+	#mobile {
+		display: block;
+	}
+}
+
 button {
 	border-radius: 50%;
 	background-color: #fff5;
