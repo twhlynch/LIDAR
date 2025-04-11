@@ -16,6 +16,8 @@ let scanning = false;
 let pattern = 1;
 let DEBUG = false;
 
+let enemy;
+
 init();
 
 // #region init
@@ -80,21 +82,39 @@ async function init() {
 		opacity: 0
 	});
 
+	const scale = 5;
+	// maze
 	const mazeGeometry = generateMaze();
 	const maze = new THREE.Mesh(mazeGeometry, mainMaterial);
 	maze.rotation.x = -Math.PI / 2;
-	maze.scale.set(5, 5, 5);
+	maze.scale.set(scale, scale, scale);
 	scene.add(maze);
 	objects.push(maze);
 
-	const torusGeometry = new THREE.TorusGeometry();
-	const torus = new THREE.Mesh(torusGeometry, mainMaterial);
-	scene.add(torus);
-	objects.push(torus);
-	torus.userData.pointColor = new THREE.Color(1, 0, 0);
-	setInterval(() => {
-		torus.position.lerp(camera.position, 0.01);
-	}, 100);
+	// enemy
+	const enemyVertices = new Float32Array(20 * 3 * 3);
+	for(let i = 0; i < 20 * 3 * 3; i++) {
+		enemyVertices[i] = (Math.random() - 0.5);
+	}
+	const enemyGeometry = new THREE.BufferGeometry();
+	enemyGeometry.setAttribute('position', new THREE.BufferAttribute(enemyVertices, 3));
+	enemy = new THREE.Mesh(enemyGeometry, mainMaterial);
+	enemy.scale.y = 5;
+	enemy.userData.pointColor = new THREE.Color(1, 0, 0);
+	scene.add(enemy);
+	objects.push(enemy);
+
+	// goal
+	const goalGeometry = new THREE.ConeGeometry(1, 5, 16);
+	const goal = new THREE.Mesh(goalGeometry, mainMaterial);
+	goal.position.set(
+		(MAZE_SIZE - 2) * scale,
+		2,
+		-(MAZE_SIZE - 1) * scale + scale,
+	);
+	goal.userData.pointColor = new THREE.Color(0, 1, 0);
+	scene.add(goal);
+	objects.push(goal);
 
 	// setup UI
 	const scannerButton = document.getElementById('scanner');
@@ -140,13 +160,12 @@ function pointerLockChange() {
 function render() {
 	const delta = clock.getDelta();
 
-	if (DEBUG) {
-		fly.update(delta);
-	} else {
-		controls.update(delta);
-	}
+	if (DEBUG) fly.update(delta);
+	else controls.update(delta);
 
 	if (scanning) scan()
+
+	enemy.position.lerp(camera.position, 0.1 * delta);
 
 	renderer.render(scene, camera);
 }
@@ -238,7 +257,6 @@ function generateMaze() {
 	const size = 21;
 
 	const maze = Array.from({ length: MAZE_SIZE }, () => Array(MAZE_SIZE).fill(false));
-	maze[MAZE_SIZE - 2][MAZE_SIZE - 1] = true;
 	const visited = Array.from({ length: MAZE_SIZE }, () => Array(MAZE_SIZE).fill(false));
 
 	const directions = [
