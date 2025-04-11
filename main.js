@@ -17,6 +17,7 @@ let pattern = 1;
 let DEBUG = false;
 
 let enemy;
+let joystickPosition = {x: 0, y: 0, changed: false}
 
 init();
 
@@ -48,7 +49,7 @@ async function init() {
 	window.addEventListener('resize', resize);
 	window.addEventListener('keydown', keydown);
 	window.addEventListener('keyup', keyup);
-	window.addEventListener('click', click);
+	renderer.domElement.addEventListener('click', click);
 	document.addEventListener('pointerlockchange', pointerLockChange);
 
 	// setup points
@@ -121,6 +122,40 @@ async function init() {
 	scannerButton.addEventListener('click', () => {
 		scanning = !scanning;
 	});
+
+	const joystick = document.getElementById('joystick');
+	const joystickButton = joystick.children[0];
+	joystick.addEventListener('touchmove', (e) => {
+		const joystickCenterX = joystick.offsetLeft + joystick.clientWidth / 2;
+		const joystickCenterY = joystick.offsetTop + joystick.clientHeight / 2;
+		const X = Math.max(
+			joystick.offsetLeft,
+			Math.min(
+				e.touches[0].clientX, 
+				joystick.offsetLeft + joystick.clientWidth
+			)
+		) - joystickCenterX;
+		const Y = Math.max(
+			joystick.offsetTop,
+			Math.min(
+				e.touches[0].clientY, 
+				joystick.offsetTop + joystick.clientHeight
+			)
+		) - joystickCenterY;
+
+		joystickButton.style.left = X + 'px';
+		joystickButton.style.top = Y + 'px';
+		joystickPosition.x = X;
+		joystickPosition.y = Y;
+		joystickPosition.changed = true;
+	});
+	joystick.addEventListener('touchend', (e) => {
+		joystickButton.style.left = '0px';
+		joystickButton.style.top = '0px';
+		joystickPosition.x = 0;
+		joystickPosition.y = 0;
+		joystickPosition.changed = true;
+	});
 }
 
 // #region events
@@ -163,7 +198,16 @@ function render() {
 	if (DEBUG) fly.update(delta);
 	else controls.update(delta);
 
-	if (scanning) scan()
+	if (scanning) scan();
+
+	if (joystickPosition.changed) {
+		controls.moveState.forward = joystickPosition.y < -20;
+		controls.moveState.back = joystickPosition.y > 20;
+		controls.moveState.right = joystickPosition.x > 20;
+		controls.moveState.left = joystickPosition.x < -20;
+		controls.updateMovementVector();
+		joystickPosition.changed = false;
+	}
 
 	enemy.position.lerp(camera.position, 0.1 * delta);
 	enemy.rotation.y += 0.1;
@@ -255,8 +299,6 @@ function scan() {
 
 // #region maze
 function generateMaze() {
-	const size = 21;
-
 	const maze = Array.from({ length: MAZE_SIZE }, () => Array(MAZE_SIZE).fill(false));
 	const visited = Array.from({ length: MAZE_SIZE }, () => Array(MAZE_SIZE).fill(false));
 
