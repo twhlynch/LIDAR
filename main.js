@@ -8,21 +8,36 @@ let clock, camera, scene, renderer, controls, raycaster, fly;
 const MAX_POINTS = 1_000_000;
 const MAZE_SIZE = 21;
 
-let objects = [];
+let objects;
+let collisionObjects;
+let interactionObjects;
 let mainMaterial;
-let nextPointIndex = 0;
+let nextPointIndex;
 let pointsObject;
-let scanning = false;
-let pattern = 1;
-let DEBUG = false;
+let scanning;
+let pattern;
+let DEBUG;
+let joystickPosition;
+let health;
+let collisionRaycaster;
 
 let enemy;
-let joystickPosition = {x: 0, y: 0, changed: false}
+let maze;
 
 init();
 
 // #region init
 async function init() {
+	// basic setup
+	objects = [];
+	collisionObjects = [];
+	interactionObjects = [];
+	nextPointIndex = 0;
+	scanning = false;
+	pattern = 1;
+	DEBUG = false;
+	joystickPosition = {x: 0, y: 0, changed: false};
+
 	// setup renderer
 	renderer = new THREE.WebGLRenderer({
 		antialias: true,
@@ -37,7 +52,7 @@ async function init() {
 	clock = new THREE.Clock();
 	scene = new THREE.Scene();
 	camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 5000);
-	controls = new WalkControls(camera, renderer.domElement, objects);
+	controls = new WalkControls(camera, renderer.domElement, collisionObjects);
 	fly = new FreeControls(camera, renderer.domElement);
 	raycaster = new THREE.Raycaster();
 	camera.position.set(2, 2, -2);
@@ -91,18 +106,20 @@ async function init() {
 	maze.scale.set(scale, scale, scale);
 	scene.add(maze);
 	objects.push(maze);
+	collisionObjects.push(maze);
 
 	// enemy
-	const enemyVertices = new Float32Array(20 * 3 * 3);
-	for(let i = 0; i < 20 * 3 * 3; i++) {
-		enemyVertices[i] = (Math.random() - 0.5);
-	}
-	const enemyGeometry = new THREE.BufferGeometry();
-	enemyGeometry.setAttribute('position', new THREE.BufferAttribute(enemyVertices, 3));
+	const enemyGeometry =new THREE.ConeGeometry(1, 5, 16);
 	enemy = new THREE.Mesh(enemyGeometry, mainMaterial);
-	enemy.scale.y = 5;
+	enemy.position.set(
+		(MAZE_SIZE - 2) * scale,
+		2,
+		-(MAZE_SIZE - 1) * scale + scale,
+	);
 	enemy.userData.pointColor = new THREE.Color(1, 0, 0);
+	enemy.userData.isEnemy = true;
 	scene.add(enemy);
+	interactionObjects.push(enemy);
 	objects.push(enemy);
 
 	// goal
@@ -114,8 +131,14 @@ async function init() {
 		-(MAZE_SIZE - 1) * scale + scale,
 	);
 	goal.userData.pointColor = new THREE.Color(0, 1, 0);
+	goal.userData.isGoal = true;
 	scene.add(goal);
+	interactionObjects.push(goal);
 	objects.push(goal);
+
+	// HP
+	collisionRaycaster = new THREE.Raycaster();
+	health = 100;
 
 	// setup UI
 	const scannerButton = document.getElementById('scanner');
@@ -223,6 +246,16 @@ function render() {
 	enemy.position.addScaledVector(direction, speed);
 	enemy.rotation.y += 0.1;
 
+	collisionRaycaster.set(new THREE.Vector3(0, 10, 0).add(camera.position), new THREE.Vector3(0, -1, 0));
+	const intersects = collisionRaycaster.intersectObjects(interactionObjects, true);
+	if (intersects.length) {
+		const collision = intersects[0];
+		if (collision.object.userData.isEnemy) {
+			health--;
+			document.getElementById('health').children[0].style.width = health + '%';
+		}
+	}
+
 	renderer.render(scene, camera);
 }
 
@@ -310,7 +343,7 @@ function scan() {
 
 // #region maze
 function generateMaze() {
-	const maze = Array.from({ length: MAZE_SIZE }, () => Array(MAZE_SIZE).fill(false));
+	maze = Array.from({ length: MAZE_SIZE }, () => Array(MAZE_SIZE).fill(false));
 	const visited = Array.from({ length: MAZE_SIZE }, () => Array(MAZE_SIZE).fill(false));
 
 	const directions = [

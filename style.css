@@ -62,3 +62,22 @@ button {
 	height: 60px;
 	position: relative;
 }
+
+#health {
+	border-radius: 10px;
+	background-color: #fff5;
+	border: 2px solid #fff9;
+	box-shadow: 0 0 3px 3px #0007;
+	position: fixed;
+	z-index: 10;
+	top: 20px;
+	left: 20px;
+	width: 40%;
+	height: 10px;
+}
+#health div {
+	width: 100%;
+	background-color: #f00;
+	height: 100%;
+	border-radius: 10px;
+}
