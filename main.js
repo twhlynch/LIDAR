@@ -148,23 +148,30 @@ async function init() {
 
 	const joystick = document.getElementById('joystick');
 	const joystickButton = joystick.children[0];
+	const maxLength = joystick.clientWidth / 2;
 	joystick.addEventListener('touchmove', (e) => {
-		const joystickCenterX = joystick.offsetLeft + joystick.clientWidth / 2;
-		const joystickCenterY = joystick.offsetTop + joystick.clientHeight / 2;
-		const X = Math.max(
+		const joystickCenterX = joystick.offsetLeft + maxLength;
+		const joystickCenterY = joystick.offsetTop + maxLength;
+		let X = Math.max(
 			joystick.offsetLeft,
 			Math.min(
 				e.touches[0].clientX, 
 				joystick.offsetLeft + joystick.clientWidth
 			)
 		) - joystickCenterX;
-		const Y = Math.max(
+		let Y = Math.max(
 			joystick.offsetTop,
 			Math.min(
 				e.touches[0].clientY, 
 				joystick.offsetTop + joystick.clientHeight
 			)
 		) - joystickCenterY;
+
+		const length = Math.sqrt(X*X + Y*Y);
+		if (length > maxLength) {
+			X = (X / length) * maxLength;
+			Y = (Y / length) * maxLength;
+		}
 
 		joystickButton.style.left = X + 'px';
 		joystickButton.style.top = Y + 'px';
