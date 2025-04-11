@@ -206,6 +206,13 @@ function render() {
 		controls.moveState.right = joystickPosition.x > 20;
 		controls.moveState.left = joystickPosition.x < -20;
 		controls.updateMovementVector();
+
+		fly.moveState.forward = joystickPosition.y < -20;
+		fly.moveState.back = joystickPosition.y > 20;
+		fly.moveState.right = joystickPosition.x > 20;
+		fly.moveState.left = joystickPosition.x < -20;
+		fly.updateMovementVector();
+
 		joystickPosition.changed = false;
 	}
 
