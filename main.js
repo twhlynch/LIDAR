@@ -1,8 +1,9 @@
 import * as THREE from 'three';
 import * as SHADERS from './shaders.js';
 import { WalkControls } from './walk_controls.js';
+import { FreeControls } from './free_controls.js';
 
-let clock, camera, scene, renderer, controls, raycaster;
+let clock, camera, scene, renderer, controls, raycaster, fly;
 
 const MAX_POINTS = 1_000_000;
 const MAZE_SIZE = 21;
@@ -13,6 +14,7 @@ let nextPointIndex = 0;
 let pointsObject;
 let scanning = false;
 let pattern = 1;
+let DEBUG = false;
 
 init();
 
@@ -33,6 +35,7 @@ async function init() {
 	scene = new THREE.Scene();
 	camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 5000);
 	controls = new WalkControls(camera, renderer.domElement, objects);
+	fly = new FreeControls(camera, renderer.domElement);
 	raycaster = new THREE.Raycaster();
 	camera.position.set(2, 2, -2);
 
@@ -84,6 +87,15 @@ async function init() {
 	scene.add(maze);
 	objects.push(maze);
 
+	const torusGeometry = new THREE.TorusGeometry();
+	const torus = new THREE.Mesh(torusGeometry, mainMaterial);
+	scene.add(torus);
+	objects.push(torus);
+	torus.userData.pointColor = new THREE.Color(1, 0, 0);
+	setInterval(() => {
+		torus.position.lerp(camera.position, 0.01);
+	}, 100);
+
 	// setup UI
 	const scannerButton = document.getElementById('scanner');
 	scannerButton.addEventListener('click', () => {
@@ -106,6 +118,9 @@ function keydown(e) {
 		scanning = true;
 	} else if (e.code.startsWith("Digit")) {
 		pattern = parseInt(e.code.slice(5));
+	} else if (e.code === "KeyP") {
+		DEBUG = !DEBUG;
+		mainMaterial.opacity = DEBUG ? 1 : 0;
 	}
 } 
 function keyup(e) {
@@ -118,13 +133,18 @@ function click() {
 }
 function pointerLockChange() {
 	controls.isMouseActive = (document.pointerLockElement === renderer.domElement);
+	fly.isMouseActive = (document.pointerLockElement === renderer.domElement);
 }
 
 // #region render
 function render() {
 	const delta = clock.getDelta();
 
-	controls.update(delta);
+	if (DEBUG) {
+		fly.update(delta);
+	} else {
+		controls.update(delta);
+	}
 
 	if (scanning) scan()
 
@@ -348,7 +368,7 @@ function scanRay(x, y) {
 	if (intersects.length) addPoint(intersects[0].point, intersects[0].object.userData.pointColor);
 }
 
-function addPoint(point, color) {
+function addPoint(point, color = new THREE.Color(1, 1, 1)) {
 	const pointColor = color?.clone() || new THREE.Color(1, 1, 1);
 	pointColor.r *= 1 + Math.random() * 0.2 - 0.1;
 	pointColor.g *= 1 + Math.random() * 0.2 - 0.1;
