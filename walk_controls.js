@@ -176,8 +176,8 @@ class WalkControls extends THREE.EventDispatcher {
 		this.touchmove = function(event){
 			if(this.touchCount > 0)
 			{
-				this.moveState.yawLeft = event.targetTouches[0].screenX - this.touchPosition.x;
-				this.moveState.pitchDown = this.touchPosition.y - event.targetTouches[0].screenY;
+				this.moveState.yawLeft = this.touchPosition.x - event.targetTouches[0].screenX;
+				this.moveState.pitchDown = event.targetTouches[0].screenY - this.touchPosition.y;
 
 				this.touchPosition.x = event.targetTouches[0].screenX;
 				this.touchPosition.y = event.targetTouches[0].screenY;
